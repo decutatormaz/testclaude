@@ -104,7 +104,7 @@
     /* ── Board ── */
     .board {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 10px;
       background: rgba(255,255,255,0.04);
       border-radius: 16px;
@@ -113,12 +113,12 @@
     }
 
     .cell {
-      width: 100px;
-      height: 100px;
+      width: 85px;
+      height: 85px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 2.8rem;
+      font-size: 2.2rem;
       font-weight: 700;
       border-radius: 12px;
       background: rgba(255,255,255,0.06);
@@ -220,8 +220,8 @@
 
     .hidden { display: none !important; }
 
-    @media (max-width: 400px) {
-      .cell { width: 82px; height: 82px; font-size: 2.2rem; }
+    @media (max-width: 420px) {
+      .cell { width: 64px; height: 64px; font-size: 1.6rem; }
       h1 { font-size: 2rem; }
     }
   </style>
@@ -273,6 +273,13 @@
     <div class="cell" data-i="6"></div>
     <div class="cell" data-i="7"></div>
     <div class="cell" data-i="8"></div>
+    <div class="cell" data-i="9"></div>
+    <div class="cell" data-i="10"></div>
+    <div class="cell" data-i="11"></div>
+    <div class="cell" data-i="12"></div>
+    <div class="cell" data-i="13"></div>
+    <div class="cell" data-i="14"></div>
+    <div class="cell" data-i="15"></div>
   </div>
 
   <div class="btn-row">
@@ -282,11 +289,21 @@
 </div>
 
 <script>
+  // Tris valido solo su righe e colonne (griglia 4x4, 3 in fila)
   const WINS = [
-    [0,1,2],[3,4,5],[6,7,8],
-    [0,3,6],[1,4,7],[2,5,8],
-    [0,4,8],[2,4,6]
+    // righe
+    [0,1,2],[1,2,3],
+    [4,5,6],[5,6,7],
+    [8,9,10],[9,10,11],
+    [12,13,14],[13,14,15],
+    // colonne
+    [0,4,8],[4,8,12],
+    [1,5,9],[5,9,13],
+    [2,6,10],[6,10,14],
+    [3,7,11],[7,11,15]
   ];
+  const SIZE = 16;
+  const MAX_DEPTH = 4;
 
   // ── State ────────────────────────────────────────────────
   let board, gameOver, busy;
@@ -310,24 +327,40 @@
   const labelX       = document.getElementById('labelX');
   const labelO       = document.getElementById('labelO');
 
-  // ── Minimax ───────────────────────────────────────────────
-  // perspective: which player is "maximizing" in this subtree
-  function minimax(b, player, alpha, beta) {
+  // ── Heuristica per depth limit ────────────────────────────
+  function evaluate(b) {
+    let score = 0;
+    for (const [a, c, d] of WINS) {
+      const vals = [b[a], b[c], b[d]];
+      const oN = vals.filter(v => v === 'O').length;
+      const xN = vals.filter(v => v === 'X').length;
+      if (oN > 0 && xN > 0) continue;
+      if      (oN === 2) score += 5;
+      else if (oN === 1) score += 1;
+      if      (xN === 2) score -= 5;
+      else if (xN === 1) score -= 1;
+    }
+    return score;
+  }
+
+  // ── Minimax con depth limit e alpha-beta ──────────────────
+  function minimax(b, player, alpha, beta, depth) {
     const result = checkWinner(b);
     if (result) {
       if (result.draw)           return 0;
-      if (result.winner === 'O') return  10;
-      return -10;
+      if (result.winner === 'O') return  100 - depth;
+      return depth - 100;
     }
+    if (depth >= MAX_DEPTH) return evaluate(b);
 
     const opponent = player === 'O' ? 'X' : 'O';
 
     if (player === 'O') {           // maximizing
       let best = -Infinity;
-      for (let i = 0; i < 9; i++) {
+      for (let i = 0; i < SIZE; i++) {
         if (!b[i]) {
           b[i] = player;
-          best = Math.max(best, minimax(b, opponent, alpha, beta));
+          best = Math.max(best, minimax(b, opponent, alpha, beta, depth + 1));
           b[i] = null;
           alpha = Math.max(alpha, best);
           if (beta <= alpha) break;
@@ -336,10 +369,10 @@
       return best;
     } else {                        // minimizing (X)
       let best = Infinity;
-      for (let i = 0; i < 9; i++) {
+      for (let i = 0; i < SIZE; i++) {
         if (!b[i]) {
           b[i] = player;
-          best = Math.min(best, minimax(b, opponent, alpha, beta));
+          best = Math.min(best, minimax(b, opponent, alpha, beta, depth + 1));
           b[i] = null;
           beta = Math.min(beta, best);
           if (beta <= alpha) break;
@@ -353,18 +386,17 @@
   function bestMove(b, player) {
     const sign = player === 'O' ? 1 : -1;
     const opponent = player === 'O' ? 'X' : 'O';
-    let bestScore = -Infinity * sign, bestMoves = [];
+    let bestScore = -Infinity, bestMoves = [];
 
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < SIZE; i++) {
       if (!b[i]) {
         b[i] = player;
-        const s = sign * minimax(b, opponent, -Infinity, Infinity);
+        const s = sign * minimax(b, opponent, -Infinity, Infinity, 1);
         b[i] = null;
         if (s > bestScore) { bestScore = s; bestMoves = [i]; }
         else if (s === bestScore) bestMoves.push(i);
       }
     }
-    // random tie-breaking → different game paths even between equal moves
     return bestMoves[Math.floor(Math.random() * bestMoves.length)] ?? -1;
   }
 
@@ -491,7 +523,7 @@
   // ── New game ──────────────────────────────────────────────
   function newGame() {
     clearTimeout(autoplayTimer);
-    board       = Array(9).fill(null);
+    board       = Array(SIZE).fill(null);
     gameOver    = false;
     busy        = false;
     currentTurn = 'X';
