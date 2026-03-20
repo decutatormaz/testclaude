@@ -299,25 +299,25 @@
 </div>
 
 <script>
-  // Griglia 5x5 — vince chi fa 3 in fila (orizz., vert., diag.)
+  // Griglia 5x5 — vince chi fa 4 in fila (orizz., vert., diag.)
   const WINS = (function() {
     const wins = [];
-    // Orizzontali: 3 consecutive per ogni riga
+    // Orizzontali: 4 consecutive per ogni riga
     for (let r = 0; r < 5; r++)
-      for (let c = 0; c <= 2; c++)
-        wins.push([r*5+c, r*5+c+1, r*5+c+2]);
-    // Verticali: 3 consecutive per ogni colonna
+      for (let c = 0; c <= 1; c++)
+        wins.push([r*5+c, r*5+c+1, r*5+c+2, r*5+c+3]);
+    // Verticali: 4 consecutive per ogni colonna
     for (let c = 0; c < 5; c++)
-      for (let r = 0; r <= 2; r++)
-        wins.push([r*5+c, (r+1)*5+c, (r+2)*5+c]);
+      for (let r = 0; r <= 1; r++)
+        wins.push([r*5+c, (r+1)*5+c, (r+2)*5+c, (r+3)*5+c]);
     // Diagonali \
-    for (let r = 0; r <= 2; r++)
-      for (let c = 0; c <= 2; c++)
-        wins.push([r*5+c, (r+1)*5+c+1, (r+2)*5+c+2]);
+    for (let r = 0; r <= 1; r++)
+      for (let c = 0; c <= 1; c++)
+        wins.push([r*5+c, (r+1)*5+c+1, (r+2)*5+c+2, (r+3)*5+c+3]);
     // Diagonali /
-    for (let r = 0; r <= 2; r++)
-      for (let c = 2; c < 5; c++)
-        wins.push([r*5+c, (r+1)*5+c-1, (r+2)*5+c-2]);
+    for (let r = 0; r <= 1; r++)
+      for (let c = 3; c < 5; c++)
+        wins.push([r*5+c, (r+1)*5+c-1, (r+2)*5+c-2, (r+3)*5+c-3]);
     return wins;
   })();
 
@@ -349,14 +349,16 @@
   // ── Heuristica ────────────────────────────────────────────
   function evaluate(b) {
     let sc = 0;
-    for (const [a, c, d] of WINS) {
-      const vals = [b[a], b[c], b[d]];
+    for (const [a, c, d, e] of WINS) {
+      const vals = [b[a], b[c], b[d], b[e]];
       const oN = vals.filter(v => v === 'O').length;
       const xN = vals.filter(v => v === 'X').length;
       if (oN > 0 && xN > 0) continue;
-      if      (oN === 2) sc += 5;
+      if      (oN === 3) sc += 20;
+      else if (oN === 2) sc += 5;
       else if (oN === 1) sc += 1;
-      if      (xN === 2) sc -= 5;
+      if      (xN === 3) sc -= 20;
+      else if (xN === 2) sc -= 5;
       else if (xN === 1) sc -= 1;
     }
     return sc;
@@ -420,9 +422,9 @@
 
   // ── Helpers ───────────────────────────────────────────────
   function checkWinner(b) {
-    for (const [a, c, d] of WINS) {
-      if (b[a] && b[a] === b[c] && b[a] === b[d])
-        return { winner: b[a], line: [a, c, d] };
+    for (const [a, c, d, e] of WINS) {
+      if (b[a] && b[a] === b[c] && b[a] === b[d] && b[a] === b[e])
+        return { winner: b[a], line: [a, c, d, e] };
     }
     if (b.every(v => v)) return { winner: null, line: null, draw: true };
     return null;
