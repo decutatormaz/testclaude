@@ -101,10 +101,10 @@
     .status.draw { color: #fbbf24; }
     .status.turn { color: #93c5fd; }
 
-    /* ── Board ── */
+    /* ── Board 5x5 ── */
     .board {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 10px;
       background: rgba(255,255,255,0.04);
       border-radius: 16px;
@@ -113,12 +113,12 @@
     }
 
     .cell {
-      width: 85px;
-      height: 85px;
+      width: 75px;
+      height: 75px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 2.2rem;
+      font-size: 2rem;
       font-weight: 700;
       border-radius: 12px;
       background: rgba(255,255,255,0.06);
@@ -220,8 +220,8 @@
 
     .hidden { display: none !important; }
 
-    @media (max-width: 420px) {
-      .cell { width: 64px; height: 64px; font-size: 1.6rem; }
+    @media (max-width: 480px) {
+      .cell { width: 56px; height: 56px; font-size: 1.4rem; }
       h1 { font-size: 2rem; }
     }
   </style>
@@ -263,6 +263,7 @@
     <span class="speed-label" id="speedLabel">3</span>
   </div>
 
+  <!-- 5x5 Board -->
   <div class="board" id="board">
     <div class="cell" data-i="0"></div>
     <div class="cell" data-i="1"></div>
@@ -280,6 +281,15 @@
     <div class="cell" data-i="13"></div>
     <div class="cell" data-i="14"></div>
     <div class="cell" data-i="15"></div>
+    <div class="cell" data-i="16"></div>
+    <div class="cell" data-i="17"></div>
+    <div class="cell" data-i="18"></div>
+    <div class="cell" data-i="19"></div>
+    <div class="cell" data-i="20"></div>
+    <div class="cell" data-i="21"></div>
+    <div class="cell" data-i="22"></div>
+    <div class="cell" data-i="23"></div>
+    <div class="cell" data-i="24"></div>
   </div>
 
   <div class="btn-row">
@@ -289,25 +299,34 @@
 </div>
 
 <script>
-  // Tris valido solo su righe e colonne (griglia 4x4, 3 in fila)
-  const WINS = [
-    // righe
-    [0,1,2],[1,2,3],
-    [4,5,6],[5,6,7],
-    [8,9,10],[9,10,11],
-    [12,13,14],[13,14,15],
-    // colonne
-    [0,4,8],[4,8,12],
-    [1,5,9],[5,9,13],
-    [2,6,10],[6,10,14],
-    [3,7,11],[7,11,15]
-  ];
-  const SIZE = 16;
-  const MAX_DEPTH = 4;
+  // Griglia 5x5 — vince chi fa 3 in fila (orizz., vert., diag.)
+  const WINS = (function() {
+    const wins = [];
+    // Orizzontali: 3 consecutive per ogni riga
+    for (let r = 0; r < 5; r++)
+      for (let c = 0; c <= 2; c++)
+        wins.push([r*5+c, r*5+c+1, r*5+c+2]);
+    // Verticali: 3 consecutive per ogni colonna
+    for (let c = 0; c < 5; c++)
+      for (let r = 0; r <= 2; r++)
+        wins.push([r*5+c, (r+1)*5+c, (r+2)*5+c]);
+    // Diagonali \
+    for (let r = 0; r <= 2; r++)
+      for (let c = 0; c <= 2; c++)
+        wins.push([r*5+c, (r+1)*5+c+1, (r+2)*5+c+2]);
+    // Diagonali /
+    for (let r = 0; r <= 2; r++)
+      for (let c = 2; c < 5; c++)
+        wins.push([r*5+c, (r+1)*5+c-1, (r+2)*5+c-2]);
+    return wins;
+  })();
+
+  const SIZE = 25;
+  const MAX_DEPTH = 3;
 
   // ── State ────────────────────────────────────────────────
   let board, gameOver, busy;
-  let mode = 'human';          // 'human' | 'cpu'
+  let mode = 'human';
   let autoplay = false;
   let autoplayTimer = null;
   let gamesPlayed = 0;
@@ -327,20 +346,20 @@
   const labelX       = document.getElementById('labelX');
   const labelO       = document.getElementById('labelO');
 
-  // ── Heuristica per depth limit ────────────────────────────
+  // ── Heuristica ────────────────────────────────────────────
   function evaluate(b) {
-    let score = 0;
+    let sc = 0;
     for (const [a, c, d] of WINS) {
       const vals = [b[a], b[c], b[d]];
       const oN = vals.filter(v => v === 'O').length;
       const xN = vals.filter(v => v === 'X').length;
       if (oN > 0 && xN > 0) continue;
-      if      (oN === 2) score += 5;
-      else if (oN === 1) score += 1;
-      if      (xN === 2) score -= 5;
-      else if (xN === 1) score -= 1;
+      if      (oN === 2) sc += 5;
+      else if (oN === 1) sc += 1;
+      if      (xN === 2) sc -= 5;
+      else if (xN === 1) sc -= 1;
     }
-    return score;
+    return sc;
   }
 
   // ── Minimax con depth limit e alpha-beta ──────────────────
@@ -355,7 +374,7 @@
 
     const opponent = player === 'O' ? 'X' : 'O';
 
-    if (player === 'O') {           // maximizing
+    if (player === 'O') {
       let best = -Infinity;
       for (let i = 0; i < SIZE; i++) {
         if (!b[i]) {
@@ -367,7 +386,7 @@
         }
       }
       return best;
-    } else {                        // minimizing (X)
+    } else {
       let best = Infinity;
       for (let i = 0; i < SIZE; i++) {
         if (!b[i]) {
@@ -382,7 +401,6 @@
     }
   }
 
-  // Best move for given player (with random tie-breaking for variety)
   function bestMove(b, player) {
     const sign = player === 'O' ? 1 : -1;
     const opponent = player === 'O' ? 'X' : 'O';
@@ -411,7 +429,7 @@
   }
 
   function stepDelay() {
-    const v = +speedSlider.value;          // 1–5
+    const v = +speedSlider.value;
     return [900, 600, 380, 200, 80][v - 1];
   }
 
@@ -495,7 +513,6 @@
   }
 
   // ── CPU vs CPU ────────────────────────────────────────────
-  // currentTurn: 'X' | 'O'
   let currentTurn;
 
   function scheduleCpuTurn() {
@@ -533,7 +550,7 @@
     gameCounter.textContent = `Partita #${gamesPlayed}`;
 
     if (mode === 'human') {
-      setStatus('Il tuo lota turno (X)', 'turn');
+      setStatus('Il tuo turno (X)', 'turn');
     } else {
       setStatus('Turno di X (minimax)', 'turn');
       scheduleCpuTurn();
